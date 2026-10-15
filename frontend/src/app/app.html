@@ -1,0 +1,120 @@
+<header class="topbar">
+  <div class="brand">
+    <h1>System Monitor</h1>
+    <span class="muted">Dashboard web</span>
+  </div>
+  <div class="badges">
+    <span class="badge" [class.ok]="monitor.backendConnected()">
+      <span class="dot"></span> Backend {{ monitor.backendConnected() ? 'connected' : 'deconnected' }}
+    </span>
+    <span class="badge" [class.ok]="monitor.agentConnected()">
+      <span class="dot"></span> Agent {{ monitor.agentConnected() ? 'connected' : 'deconnected' }}
+    </span>
+  </div>
+</header>
+
+<main class="layout">
+  @let snap = monitor.latest();
+
+  <section class="stats">
+    <div class="card stat">
+      <span class="label">CPU</span>
+      <span class="value">{{ snap ? (snap.cpu | number: '1.1-1') + '%' : '–' }}</span>
+    </div>
+    <div class="card stat">
+      <span class="label">RAM</span>
+      <span class="value">{{ snap ? (snap.memory.percent | number: '1.1-1') + '%' : '–' }}</span>
+      @if (snap) {
+        <span class="hint">{{ snap.memory.usedGB | number: '1.1-1' }} / {{ snap.memory.totalGB | number: '1.1-1' }} GB</span>
+      }
+    </div>
+    <div class="card stat">
+      <span class="label">Procese</span>
+      <span class="value">{{ snap ? snap.processes.length : '–' }}</span>
+    </div>
+    <div class="card stat" [class.alerting]="activeAlerts() > 0">
+      <span class="label">Active alerts</span>
+      <span class="value">{{ activeAlerts() }}</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>Live</h2>
+      <span class="muted">last 60 seconds</span>
+    </div>
+    <app-line-chart [labels]="liveLabels()" [series]="liveSeries()" />
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>Istoric</h2>
+      <div class="segmented">
+        @for (range of ranges; track range) {
+          <button [class.active]="selectedRange() === range" (click)="selectedRange.set(range)">{{ range }}</button>
+        }
+      </div>
+    </div>
+    @if (historyEmpty()) {
+      <p class="empty">No data for this interval yet.</p>
+    } @else {
+      <app-line-chart [labels]="historyLabels()" [series]="historySeries()" />
+    }
+  </section>
+
+  <div class="two-columns">
+    <section class="card">
+      <div class="card-header">
+        <h2>Top proccesses</h2>
+        <div class="segmented">
+          <button [class.active]="processSort() === 'cpu'" (click)="processSort.set('cpu')">CPU</button>
+          <button [class.active]="processSort() === 'memory'" (click)="processSort.set('memory')">Memory</button>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Proces</th>
+            <th class="num">PID</th>
+            <th class="num">CPU</th>
+            <th class="num">Memorie</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of topProcesses(); track p.pid) {
+            <tr>
+              <td>{{ p.name }}</td>
+              <td class="num muted">{{ p.pid }}</td>
+              <td class="num">{{ p.cpu | number: '1.1-1' }}%</td>
+              <td class="num">{{ p.memoryMB | number: '1.0-0' }} MB</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="4" class="empty">No data</td></tr>
+          }
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>Alerte</h2>
+        <span class="muted">CPU or RAM over 90% at a duration of 30s</span>
+      </div>
+      <ul class="alerts">
+        @for (alert of alerts(); track alert.id) {
+          <li [class.active]="alert.endedAt === null">
+            <div>
+              <strong>{{ alertLabel(alert) }}</strong> peste {{ alert.threshold }}%
+              <span class="muted">· maxim {{ alert.peak | number: '1.0-1' }}%</span>
+            </div>
+            <div class="muted">
+              {{ alertWhen(alert) }} · {{ alert.endedAt === null ? 'activă de ' : 'a durat ' }}{{ alertDuration(alert) }}
+            </div>
+          </li>
+        } @empty {
+          <li class="empty">No alert.Everything fine</li>
+        }
+      </ul>
+    </section>
+  </div>
+</main>

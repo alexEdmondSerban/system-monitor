@@ -1,0 +1,9 @@
+.vs/
+build/
+**/build/
+out/
+*.ipch
+*.db
+*.sqlite
+vcpkg_installed/
+node_modules/
